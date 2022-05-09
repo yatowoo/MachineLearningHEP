@@ -449,7 +449,7 @@ class AnalyzerJet(Analyzer):
                     fitter.SetFixGaussianSigma(sigma_initial)
                 if self.p_sgnfunc[ipt] == 1:
                     fitter.IncludeSecondGausPeak(
-                        self.p_masspeaksec[ipt],
+                        self.p_masspeaksec,
                         self.p_fix_meansec[ipt],
                         self.p_sigmaarraysec[ipt],
                         self.p_fix_sigmasec[ipt]

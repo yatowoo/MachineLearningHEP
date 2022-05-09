@@ -137,15 +137,17 @@ class AnalyzerJet(Analyzer):
         self.p_set_fix_sigma= \
         datap["analysis"][self.typean].get("SetFixGaussianSigma", [False] * self.p_nptfinbins)
         self.p_sigmaarray = datap["analysis"][self.typean]["sigmaarray"]
-        #self.p_masspeaksec = None
+        self.p_masspeaksec = None
+        self.p_fix_meansec = None
         self.p_fix_sigmasec = None
         self.p_sigmaarraysec = None
+        # Include second gaus
         if self.p_sgnfunc[0] == 1:
-            #self.p_masspeaksec = datap["analysis"][self.typean]["masspeaksec"]
-            self.p_fix_sigmasec = datap["analysis"][self.typean]["fix_sigmasec"]
-            self.p_sigmaarraysec = datap["analysis"][self.typean]["sigmaarraysec"]
+            self.p_masspeaksec = datap["analysis"][self.typean].get("masspeaksec",None)
+            self.p_fix_meansec = datap["analysis"][self.typean].get("fix_meansec", [False] * self.p_nptfinbins)
+            self.p_fix_sigmasec = datap["analysis"][self.typean].get("fix_sigmasec",[False] * self.p_nptfinbins)
+            self.p_sigmaarraysec = datap["analysis"][self.typean].get("sigmaarraysec", [0.0] * self.p_nptfinbins)
         self.use_reflections = datap["analysis"][self.typean].get("use_reflections", False)
-
         # efficiency calculation
         #self.doeff_resp = datap["analysis"][self.typean].get("doeff_resp", False)
 
@@ -446,6 +448,12 @@ class AnalyzerJet(Analyzer):
                     print("Set Fix Gaussian Sigma:", sigma_initial)
                     fitter.SetFixGaussianSigma(sigma_initial)
                 if self.p_sgnfunc[ipt] == 1:
+                    fitter.IncludeSecondGausPeak(
+                        self.p_masspeaksec[ipt],
+                        self.p_fix_meansec[ipt],
+                        self.p_sigmaarraysec[ipt],
+                        self.p_fix_sigmasec[ipt]
+                    )
                     if self.p_fix_sigmasec[ipt] is True:
                         fitter.SetFixSecondGaussianSigma(self.p_sigmaarraysec[ipt])
                 if self.p_fix_mean is True:

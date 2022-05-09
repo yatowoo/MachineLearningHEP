@@ -25,7 +25,8 @@ from math import sqrt
 
 # pylint: disable=import-error, no-name-in-module, unused-import
 from ROOT import AliHFInvMassFitter, AliVertexingHFUtils, AliHFInvMassMultiTrialFit
-from ROOT import TFile, TH1F, TH1D, TF1, TPaveText, TLine, TLegend, Double, TLatex
+from ROOT import TFile, TH1F, TH1D, TF1, TPaveText, TLine, TLegend, TLatex
+from ctypes import c_double as Double
 from ROOT import kBlue, kRed, kGreen, kMagenta, kOrange, kPink, kCyan, kYellow, kBlack
 
 from machine_learning_hep.logger import get_logger
@@ -496,17 +497,17 @@ class FitAliHF(FitROOT):
         signif = Double()
         signif_err = Double()
         self.kernel.Significance(n_sigma_signal, signif, signif_err)
-        sig_o_bkg = sig / bkg if bkg > 0. else -1.
+        sig_o_bkg = sig / bkg.value if bkg.value > 0 else -1.
 
         root_objects.append(self.add_pave_helper_(0.15, 0.7, 0.48, 0.89, "NDC"))
         self.add_text_helper_(root_objects[-1], f"S = {sig:.0f} #pm {sig_err:.0f}")
         self.add_text_helper_(root_objects[-1],
-                              f"B({n_sigma_signal}#sigma) = {bkg:.0f} " \
-                              f"#pm {bkg_err:.0f}")
+                              f"B({n_sigma_signal}#sigma) = {bkg.value:.0f} " \
+                              f"#pm {bkg_err.value:.0f}")
         self.add_text_helper_(root_objects[-1], f"S/B({n_sigma_signal}#sigma) = {sig_o_bkg:.4f}")
         self.add_text_helper_(root_objects[-1],
                               f"Signif({n_sigma_signal}#sigma) = " \
-                              f"{signif:.1f} #pm {signif_err:.1f}")
+                              f"{signif.value:.1f} #pm {signif_err.value:.1f}")
         root_objects[-1].Draw()
 
         root_objects.append(self.add_pave_helper_(0.55, 0.75, 0.89, 0.89, "NDC"))

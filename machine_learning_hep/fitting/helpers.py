@@ -20,8 +20,8 @@ from glob import glob
 from array import array
 
 #pylint: disable=too-many-lines, too-few-public-methods
-from ROOT import TFile, TH1F, TF1, TCanvas, gStyle, Double #pylint: disable=import-error, no-name-in-module
-
+from ROOT import TFile, TH1F, TF1, TCanvas, gStyle#pylint: disable=import-error, no-name-in-module
+from ctypes import c_double as Double
 from machine_learning_hep.logger import get_logger
 from machine_learning_hep.utilities import make_file_path
 from machine_learning_hep.utilities_plot import plot_histograms

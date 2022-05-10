@@ -487,11 +487,20 @@ class AnalyzerJet(Analyzer):
                 sig_right = (mean + self.signal_sigma*sigma)
                 bkg_right_1 = (mean + self.sideband_sigma_1_right*sigma)
                 bkg_right_2 = (mean + self.sideband_sigma_2_right*sigma)
+                # Exclude signal region of second Gaus/peak
+                if(self.p_sgnfunc[ipt] == 1):
+                    mean_sec = fitter.GetSecondPeakFunc().GetParameter(1)
+                    sigma_sec = fitter.GetSecondPeakFunc().GetParameter(2)
+                    n_sigma_sideband = self.sideband_sigma_2_left - self.sideband_sigma_1_left
+                    bkg_left_1 = mean_sec - self.sideband_sigma_1_left * sigma_sec - n_sigma_sideband * sigma
+                    bkg_left_2 = mean_sec - self.sideband_sigma_1_left * sigma_sec
                 print(f"Fit sideband regions for {suffix}: {bkg_left_1}-{bkg_left_2}, {sig_left}-{sig_right}, {bkg_right_1}-{bkg_right_2}")
                 if bkg_left_1 <= self.p_massmin[ipt]:
                     print(f"Warning: {suffix} Left sideband {'completely' if bkg_left_2 <= self.p_massmin[ipt] else 'partially'} outside histogram range")
                 if bkg_right_2 >= self.p_massmax[ipt]:
                     print(f"Warning: {suffix} Right sideband {'completely' if bkg_right_1 >= self.p_massmax[ipt] else 'partially'} outside histogram range")
+                left_borders = [bkg_left_1, bkg_left_2, sig_left]
+                right_borders = [sig_right, bkg_right_1, bkg_right_2]
                 bkg = 0
                 sig = 0
                 if (sgn_func and bkg_func):
@@ -1090,28 +1099,41 @@ class AnalyzerJet(Analyzer):
                 # the mean in both sides to extract the sideband distributions
 
                 hzvsmass = lfile.Get("hzvsmass" + suffix)
-                binmasslow2sig = \
-                    hzvsmass.GetXaxis().FindBin(mean - self.signal_sigma * sigma)
+                # sig_left
                 masslow2sig = mean - self.signal_sigma*sigma
-                binmasshigh2sig = \
-                    hzvsmass.GetXaxis().FindBin(mean + self.signal_sigma * sigma)
+                binmasslow2sig = \
+                    hzvsmass.GetXaxis().FindBin(masslow2sig)
+                # sig_right
                 masshigh2sig = mean + self.signal_sigma*sigma
-                binmasslow4sig = \
-                    hzvsmass.GetXaxis().FindBin(mean - self.sideband_sigma_1_left * sigma)
-                masslow4sig = \
-                    mean - self.sideband_sigma_1_left * sigma
-                binmasshigh4sig = \
-                    hzvsmass.GetXaxis().FindBin(mean + self.sideband_sigma_1_right * sigma)
-                masshigh4sig = \
-                    mean + self.sideband_sigma_1_right * sigma
-                binmasslow9sig = \
-                    hzvsmass.GetXaxis().FindBin(mean - self.sideband_sigma_2_left * sigma)
+                binmasshigh2sig = \
+                    hzvsmass.GetXaxis().FindBin(masshigh2sig)
+                # bkg_left_1
                 masslow9sig = \
                     mean - self.sideband_sigma_2_left * sigma
-                binmasshigh9sig = \
-                    hzvsmass.GetXaxis().FindBin(mean + self.sideband_sigma_2_right * sigma)
+                # bkg_left_2
+                masslow4sig = \
+                    mean - self.sideband_sigma_1_left * sigma
+                # Exclude signal region of second Gaus/peak
+                if(self.p_sgnfunc[ipt] == 1):
+                    mean_sec = mass_fitter.GetSecondPeakFunc().GetParameter(1)
+                    sigma_sec = mass_fitter.GetSecondPeakFunc().GetParameter(2)
+                    n_sigma_sideband = self.sideband_sigma_2_left - self.sideband_sigma_1_left
+                    masslow9sig = mean_sec - self.sideband_sigma_1_left * sigma_sec - n_sigma_sideband * sigma
+                    masslow4sig = mean_sec - self.sideband_sigma_1_left * sigma_sec
+                binmasslow9sig = \
+                    hzvsmass.GetXaxis().FindBin(masslow9sig)
+                binmasslow4sig = \
+                    hzvsmass.GetXaxis().FindBin(masslow4sig)
+                # bkg_right_1
+                masshigh4sig = \
+                    mean + self.sideband_sigma_1_right * sigma
+                binmasshigh4sig = \
+                    hzvsmass.GetXaxis().FindBin(masshigh4sig)
+                # bkg_right_2
                 masshigh9sig = \
                     mean + self.sideband_sigma_2_right * sigma
+                binmasshigh9sig = \
+                    hzvsmass.GetXaxis().FindBin(masshigh9sig)
 
                 print(f"Sideband for: {suffix}")
                 print(f"Sideband ranges: {masslow9sig}-{masslow4sig}, {masslow2sig}-{masshigh2sig}, {masshigh4sig}-{masshigh9sig}")

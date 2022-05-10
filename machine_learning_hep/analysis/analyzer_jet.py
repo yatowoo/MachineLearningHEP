@@ -488,7 +488,7 @@ class AnalyzerJet(Analyzer):
                 bkg_right_1 = (mean + self.sideband_sigma_1_right*sigma)
                 bkg_right_2 = (mean + self.sideband_sigma_2_right*sigma)
                 # Exclude signal region of second Gaus/peak
-                if(self.p_sgnfunc[ipt] == 1):
+                if(self.p_sgnfunc[ipt] == 1 and out == 1):
                     mean_sec = fitter.GetSecondPeakFunc().GetParameter(1)
                     sigma_sec = fitter.GetSecondPeakFunc().GetParameter(2)
                     n_sigma_sideband = self.sideband_sigma_2_left - self.sideband_sigma_1_left
@@ -577,13 +577,13 @@ class AnalyzerJet(Analyzer):
         fileout.Close()
         gROOT.SetBatch(tmp_is_root_batch)
 
-
-    def efficiency_inclusive(self):
+    def efficiency_inclusive(self, fileouteff=None):
         self.loadstyle()
         lfileeff = TFile.Open(self.n_fileeff)
         if not lfileeff:
             self.logger.fatal(make_message_notfound(self.n_fileeff))
-        fileouteff = TFile.Open(self.file_efficiency, "recreate")
+        if(fileouteff is None):
+            fileouteff = TFile.Open(self.file_efficiency, "recreate")
         if not fileouteff:
             self.logger.fatal(make_message_notfound(self.file_efficiency))
 
@@ -919,7 +919,7 @@ class AnalyzerJet(Analyzer):
             list_ptcand_eff_new_folded.append(h1_ptcand_eff_folded)
 
         # compare the old and the new method
-        list_ptcand_gen_old, list_ptcand_rec_old, list_ptcand_eff_old = self.efficiency_inclusive()
+        list_ptcand_gen_old, list_ptcand_rec_old, list_ptcand_eff_old = self.efficiency_inclusive(fileouteff)
         list_eff_diff = []
         list_eff_diff_labels = []
         list_effgen_diff = []
@@ -1020,6 +1020,7 @@ class AnalyzerJet(Analyzer):
         make_plot("efficiency_pr_effgen_diff", path=self.d_resultsallpdata, list_obj=list_effgen_diff, labels_obj=list_effgen_diff_labels, \
             title="correction of efficiency calculation (gen. level);#it{p}_{T}^{%s} (GeV/#it{c});error = (old #minus new)/new (%%)" % self.p_latexnhadron, \
             leg_pos=[0.55, 0.15, 0.85, 0.3], margins_y=[0.05, 0.05])
+        fileouteff.Write()
 
     # pylint: disable=too-many-locals, too-many-branches
     def sideband_sub(self):
@@ -1114,7 +1115,7 @@ class AnalyzerJet(Analyzer):
                 masslow4sig = \
                     mean - self.sideband_sigma_1_left * sigma
                 # Exclude signal region of second Gaus/peak
-                if(self.p_sgnfunc[ipt] == 1):
+                if(self.p_sgnfunc[ipt] == 1 and mass_fitter.MassFitter(0) == 1):
                     mean_sec = mass_fitter.GetSecondPeakFunc().GetParameter(1)
                     sigma_sec = mass_fitter.GetSecondPeakFunc().GetParameter(2)
                     n_sigma_sideband = self.sideband_sigma_2_left - self.sideband_sigma_1_left
@@ -4505,6 +4506,9 @@ class AnalyzerJet(Analyzer):
         elif "Lc" in self.case:
             tree_name = "tree_Lc"
             print("Loading the Lc tree")
+        elif "Ds" in self.case:
+            tree_name = "tree_Ds"
+            print("Loading the Ds tree")
         else:
             self.logger.fatal(make_message_notfound("the particle name", self.case))
         tree_sim = uproot.open(file_path)[tree_name]

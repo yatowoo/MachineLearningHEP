@@ -375,13 +375,18 @@ class ProcesserDhadrons_jet(Processer): # pylint: disable=invalid-name, too-many
                     h_invmass_sig = TH1F("hmass_sig" + suffix, "", self.p_num_bins,
                                          self.p_mass_fit_lim[0], self.p_mass_fit_lim[1])
                     h_invmass_refl = TH1F("hmass_refl" + suffix, "", self.p_num_bins,
-                                          self.p_mass_fit_lim[0], self.p_mass_fit_lim[1])
+                                          self.p_mass_fit_lim[0], self.p_mass_fit_lim[1])                                     
                     fill_hist(h_invmass_sig, df_bin_sig.inv_mass)
                     fill_hist(h_invmass_refl, df_bin_refl.inv_mass)
                     myfile.cd()
                     h_invmass_sig.Write()
                     h_invmass_refl.Write()
-
+                    df_bin_bkg = df_bin[df_bin[self.v_ismcbkg] == 1]
+                    h_zvsinvmass_bkg = TH2F("h_zvsinvmass_bkg" + suffix, "", \
+                        50000, massarray_reco, self.p_nbinshape_reco, self.varshapebinarray_reco)
+                    h_zvsinvmass_bkg.Sumw2()
+                    fill2dhist(df_bin_bkg, h_zvsinvmass_bkg, "inv_mass", self.v_varshape_binning)
+                    h_zvsinvmass_bkg.Write()
 
     # pylint: disable=line-too-long
     def process_efficiency_single(self, index):

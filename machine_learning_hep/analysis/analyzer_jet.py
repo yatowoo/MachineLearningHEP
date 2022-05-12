@@ -47,6 +47,13 @@ def shrink_err_x(graph, width=0.1):
         graph.SetPointEXlow(i, width)
         graph.SetPointEXhigh(i, width)
 
+def expand_2d_param(par : list, nbin2 : int):
+    if(type(par[0]) is not list):
+        par2d = [par] * nbin2
+        return par2d
+    else:
+        return par
+
 # pylint: disable=too-many-instance-attributes, too-many-statements
 class AnalyzerJet(Analyzer):
     species = "analyzer"
@@ -132,6 +139,7 @@ class AnalyzerJet(Analyzer):
         self.p_massmin = datap["analysis"][self.typean]["massmin"]
         self.p_massmax = datap["analysis"][self.typean]["massmax"]
         self.p_rebin = datap["analysis"][self.typean]["rebin"]
+        self.p_rebin = expand_2d_param(self.p_rebin, self.p_nbin2_reco)
         self.p_fix_mean = datap["analysis"][self.typean]["fix_mean"]
         self.set_array_sigma = datap["analysis"][self.typean].get("SetArraySigma", [False] * self.p_nptfinbins)
         self.p_set_fix_sigma= \
@@ -377,7 +385,7 @@ class AnalyzerJet(Analyzer):
                 integral_signal = histomassmc.Integral()
                 ratio_refl_over_signal = integral_refl[ibin2] / integral_signal if integral_signal > 0. else -1.
                 histomassmc_reb = AliVertexingHFUtils.RebinHisto(histomassmc, \
-                                            self.p_rebin[ipt], -1)
+                                            self.p_rebin[ibin2][ipt], -1)
                 histomassmc_reb_f = TH1F()
                 histomassmc_reb.Copy(histomassmc_reb_f)
                 fittermc = TF1("fittermc", "gaus", self.p_massmin[ipt],
@@ -425,7 +433,7 @@ class AnalyzerJet(Analyzer):
                 if not histomass:
                     self.logger.fatal(make_message_notfound("hmass" + suffix, self.n_filemass))
                 histomass_reb = AliVertexingHFUtils.RebinHisto(histomass, \
-                                            self.p_rebin[ipt], -1)
+                                            self.p_rebin[ibin2][ipt], -1)
                 histomass_reb_f = TH1F()
                 histomass_reb.Copy(histomass_reb_f)
                 fitter = AliHFInvMassFitter(histomass_reb_f, self.p_massmin[ipt], \

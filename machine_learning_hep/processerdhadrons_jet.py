@@ -375,7 +375,7 @@ class ProcesserDhadrons_jet(Processer): # pylint: disable=invalid-name, too-many
                     h_invmass_sig = TH1F("hmass_sig" + suffix, "", self.p_num_bins,
                                          self.p_mass_fit_lim[0], self.p_mass_fit_lim[1])
                     h_invmass_refl = TH1F("hmass_refl" + suffix, "", self.p_num_bins,
-                                          self.p_mass_fit_lim[0], self.p_mass_fit_lim[1])                                     
+                                          self.p_mass_fit_lim[0], self.p_mass_fit_lim[1])
                     fill_hist(h_invmass_sig, df_bin_sig.inv_mass)
                     fill_hist(h_invmass_refl, df_bin_refl.inv_mass)
                     myfile.cd()
@@ -1167,6 +1167,7 @@ class ProcesserDhadrons_jet(Processer): # pylint: disable=invalid-name, too-many
             hz_fracdiff_pr.Write()
 
         for ibin2 in range(self.p_nbin2_gen):
+            # pt_jet diff
             dtmp_nonprompt_jetptgen = seldf_singlevar(df_mc_reco_merged_nonprompt, \
                 "pt_gen_jet", self.lvar2_binmin_gen[ibin2], self.lvar2_binmax_gen[ibin2])
             suffix = "%s_%.2f_%.2f" % (self.v_var2_binning,
@@ -1192,6 +1193,62 @@ class ProcesserDhadrons_jet(Processer): # pylint: disable=invalid-name, too-many
             if norm_pr:
                 hjetpt_fracdiff_pr.Scale(1.0 / norm_pr)
             hjetpt_fracdiff_pr.Write()
+            # pt_cand diff
+            hptcand_fracdiff = TH1F("hptcand_fracdiff_nonprompt" + suffix,
+                                   "hptcand_fracdiff_nonprompt" + suffix, 100, -2, 2)
+            fill_hist(hptcand_fracdiff, (dtmp_nonprompt_jetptgen["pt_cand"] - \
+                dtmp_nonprompt_jetptgen["pt_gen_cand"])/dtmp_nonprompt_jetptgen["pt_gen_cand"])
+            norm = hptcand_fracdiff.Integral()
+            if norm:
+                hptcand_fracdiff.Scale(1.0 / norm)
+            hptcand_fracdiff.Write()
+                # prompt
+            hptcand_fracdiff_pr = TH1F("hptcand_fracdiff_prompt" + suffix,
+                                   "hptcand_fracdiff_prompt" + suffix, 100, -2, 2)
+            fill_hist(hptcand_fracdiff_pr, (dtmp_prompt_jetptgen["pt_cand"] - \
+                dtmp_prompt_jetptgen["pt_gen_cand"])/dtmp_prompt_jetptgen["pt_gen_cand"])
+            norm = hptcand_fracdiff_pr.Integral()
+            if norm:
+                hptcand_fracdiff_pr.Scale(1.0 / norm)
+            hptcand_fracdiff_pr.Write()
+            # eta_jet diff
+            dtmp_nonprompt_jetptgen
+            dtmp_prompt_jetptgen
+            hjeteta_fracdiff = TH1F("hjeteta_fracdiff_nonprompt" + suffix,
+                                   "hjeteta_fracdiff_nonprompt" + suffix, 100, -2, 2)
+            fill_hist(hjeteta_fracdiff, (dtmp_nonprompt_jetptgen["eta_jet"] - \
+                dtmp_nonprompt_jetptgen["eta_gen_jet"])/dtmp_nonprompt_jetptgen["eta_gen_jet"])
+            norm = hjeteta_fracdiff.Integral()
+            if norm:
+                hjeteta_fracdiff.Scale(1.0 / norm)
+            hjeteta_fracdiff.Write()
+                # prompt
+            hjeteta_fracdiff_pr = TH1F("hjeteta_fracdiff_prompt" + suffix,
+                                      "hjeteta_fracdiff_prompt" + suffix, 100, -2, 2)
+            fill_hist(hjeteta_fracdiff_pr, (dtmp_prompt_jetptgen["eta_jet"] - \
+                dtmp_prompt_jetptgen["eta_gen_jet"])/dtmp_prompt_jetptgen["eta_gen_jet"])
+            norm_pr = hjeteta_fracdiff_pr.Integral()
+            if norm_pr:
+                hjeteta_fracdiff_pr.Scale(1.0 / norm_pr)
+            hjeteta_fracdiff_pr.Write()
+            # phi_jet diff
+            hjetphi_fracdiff = TH1F("hjetphi_fracdiff_nonprompt" + suffix,
+                                   "hjetphi_fracdiff_nonprompt" + suffix, 100, -2, 2)
+            fill_hist(hjetphi_fracdiff, (dtmp_nonprompt_jetptgen["phi_jet"] - \
+                dtmp_nonprompt_jetptgen["phi_gen_jet"])/dtmp_nonprompt_jetptgen["phi_gen_jet"])
+            norm = hjetphi_fracdiff.Integral()
+            if norm:
+                hjetphi_fracdiff.Scale(1.0 / norm)
+            hjetphi_fracdiff.Write()
+                # prompt
+            hjetphi_fracdiff_pr = TH1F("hjetphi_fracdiff_prompt" + suffix,
+                                      "hjetphi_fracdiff_prompt" + suffix, 100, -2, 2)
+            fill_hist(hjetphi_fracdiff_pr, (dtmp_prompt_jetptgen["phi_jet"] - \
+                dtmp_prompt_jetptgen["phi_gen_jet"])/dtmp_prompt_jetptgen["phi_gen_jet"])
+            norm_pr = hjetphi_fracdiff_pr.Integral()
+            if norm_pr:
+                hjetphi_fracdiff_pr.Scale(1.0 / norm_pr)
+            hjetphi_fracdiff_pr.Write()
 
         df_mc_reco_merged_prompt_train, df_mc_reco_merged_prompt_test = \
                 train_test_split(df_mc_reco_merged_prompt, test_size=self.closure_frac)

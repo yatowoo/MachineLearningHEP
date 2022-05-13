@@ -47,7 +47,9 @@ def shrink_err_x(graph, width=0.1):
         graph.SetPointEXlow(i, width)
         graph.SetPointEXhigh(i, width)
 
-def expand_2d_param(par : list, nbin2 : int):
+def expand_2d_param(par, nbin2 : int):
+    if(par is None):
+        return None
     if(type(par[0]) is not list):
         par2d = [par] * nbin2
         return par2d
@@ -138,8 +140,7 @@ class AnalyzerJet(Analyzer):
         self.p_masspeak = datap["analysis"][self.typean]["masspeak"]
         self.p_massmin = datap["analysis"][self.typean]["massmin"]
         self.p_massmax = datap["analysis"][self.typean]["massmax"]
-        self.p_rebin = datap["analysis"][self.typean]["rebin"]
-        self.p_rebin = expand_2d_param(self.p_rebin, self.p_nbin2_reco)
+        self.p_rebin = expand_2d_param(datap["analysis"][self.typean]["rebin"], self.p_nbin2_reco)
         self.p_fix_mean = datap["analysis"][self.typean]["fix_mean"]
         self.set_array_sigma = datap["analysis"][self.typean].get("SetArraySigma", [False] * self.p_nptfinbins)
         self.p_set_fix_sigma= \
@@ -401,7 +402,7 @@ class AnalyzerJet(Analyzer):
                 setup_histogram(histomassmc_reb, get_colour(0), get_marker(0))
                 histomassmc_reb.SetTitle("")
                 histomassmc_reb.SetXTitle("invariant mass (GeV/#it{c}^{2})")
-                histomassmc_reb.SetYTitle("counts")
+                histomassmc_reb.SetYTitle(f"counts / ({histomassmc_reb.GetBinWidth(1) * 1000:.0f} MeV/#it{{c}})")
                 histomassmc_reb.SetTitleOffset(1.2, "Y")
                 histomassmc_reb.GetYaxis().SetMaxDigits(3)
                 y_min_h, y_max_h = get_y_window_his(histomassmc_reb)
@@ -475,7 +476,7 @@ class AnalyzerJet(Analyzer):
                 setup_histogram(histomass_reb, get_colour(0), get_marker(0))
                 histomass_reb.SetTitle("")
                 histomass_reb.SetXTitle("invariant mass (GeV/#it{c}^{2})")
-                histomass_reb.SetYTitle("counts")
+                histomass_reb.SetYTitle(f"counts / ({histomass_reb.GetBinWidth(1) * 1000:.0f} MeV/#it{{c}})")
                 histomass_reb.SetTitleOffset(1.2, "Y")
                 histomass_reb.GetYaxis().SetMaxDigits(3)
                 y_min_h, y_max_h = get_y_window_his(histomass_reb)
@@ -496,9 +497,11 @@ class AnalyzerJet(Analyzer):
                 bkg_right_1 = (mean + self.sideband_sigma_1_right*sigma)
                 bkg_right_2 = (mean + self.sideband_sigma_2_right*sigma)
                 # Exclude signal region of second Gaus/peak
-                if(self.p_sgnfunc[ipt] == 1 and out == 1):
-                    mean_sec = fitter.GetSecondPeakFunc().GetParameter(1)
-                    sigma_sec = fitter.GetSecondPeakFunc().GetParameter(2)
+                fit_sec_success = (self.p_sgnfunc[ipt] == 1 and out == 1)
+                if(fit_sec_success):
+                    bkg_sec_func = fitter.GetSecondPeakFunc()
+                    mean_sec = bkg_sec_func.GetParameter(1)
+                    sigma_sec = bkg_sec_func.GetParameter(2)
                     n_sigma_sideband = self.sideband_sigma_2_left - self.sideband_sigma_1_left
                     bkg_left_1 = mean_sec - self.sideband_sigma_1_left * sigma_sec - n_sigma_sideband * sigma
                     bkg_left_2 = mean_sec - self.sideband_sigma_1_left * sigma_sec
@@ -553,10 +556,15 @@ class AnalyzerJet(Analyzer):
                     if ref_func:
                         ref_func.SetLineColor(get_colour(3))
                         ref_func.Draw("same")
+                    if fit_sec_success:
+                        bkg_sec_func.SetLineColor(get_colour(4))
+                        bkg_sec_func.Draw("same")
                 if (not np.isnan(bkg) and not np.isnan(sig) and not np.isnan(s_to_b)):
-                    latex3 = TLatex(0.67, 0.78, "mean = %s, #sigma  = %s" % \
-                            (round(mean, 2), round(sigma, 2)))
+                    latex3 = TLatex(0.67, 0.78, f"#mu = {mean:.3f}, #sigma = {sigma:.3f}")
                     draw_latex(latex3)
+                    if(fit_sec_success):
+                        latexFitSec = TLatex(0.29, 0.78, f"#mu_{{2}} = {mean_sec:.3f}, #sigma_{{2}}  = {sigma_sec:.3f}")
+                        draw_latex(latexFitSec)
                     latex4 = TLatex(0.29, 0.83, "B(mean #pm 2#sigma)= %s, S(mean #pm 2#sigma)  = %s, S/#sqrt{S+B} = %s" % \
                             (int(bkg), int(sig), round(s_to_b, 2)))
                     draw_latex(latex4)
@@ -1715,6 +1723,9 @@ class AnalyzerJet(Analyzer):
 
         hjetpt_fracdiff_list = []
         hz_fracdiff_list = []
+        hjeteta_fracdiff_list = []
+        hjetphi_fracdiff_list = []
+        hptcand_fracdiff_list = []
         heff_pr_list = []
         heff_fd_list = []
         input_data_zvsjetpt_list = []
@@ -1875,6 +1886,12 @@ class AnalyzerJet(Analyzer):
 
             hjetpt_fracdiff_list.append( \
                 feeddown_input_file.Get("hjetpt_fracdiff_nonprompt" + suffix))
+            hjeteta_fracdiff_list.append( \
+                feeddown_input_file.Get("hjeteta_fracdiff_nonprompt" + suffix))
+            hjetphi_fracdiff_list.append( \
+                feeddown_input_file.Get("hjetphi_fracdiff_nonprompt" + suffix))
+            hptcand_fracdiff_list.append( \
+                feeddown_input_file.Get("hptcand_fracdiff_nonprompt" + suffix))
 
             heff_pr_list.append(file_eff.Get("eff_mult%d" % ibin2))
             heff_fd_list.append(file_eff.Get("eff_fd_mult%d" % ibin2))

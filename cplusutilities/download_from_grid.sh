@@ -11,13 +11,7 @@ if [ -z "$3" ]; then
     exit 1
 fi
 
-# Check correct environment.
-
-if [ -z "$ALIPHYSICS_RELEASE" ] || [ -z "$(echo $ALIPHYSICS_RELEASE | grep JALIEN)" ]; then
-    echo "Error: Load the JALIEN flavour of AliPhysics and run the script again."
-    echo '/cvmfs/alice.cern.ch/bin/alienv enter AliPhysics/vAN-'$(date --date="-2 days" +%Y%m%d)'_JALIEN-1'
-    exit 1
-fi
+# Check correct environment. - JAlien as default after 2021
 
 path_grid="$1" # Grid path
 shift
@@ -62,12 +56,12 @@ delay=$(echo "scale=10 ; 1 / $speed" | bc)
 i_file=0
 for file in $(cat $inputlist); do
     i_file=$((i_file + 1))
-    target_file="$path_local/${file/$path_grid/}"
+    target_file="$path_local/$i_file/$(basename $file)"
     echo "$i_file/$nfiles $file"
     mkdir -p $(dirname $target_file)
     if [ ! $? -eq 0 ]; then echo "Error"; exit 1; fi
     path_alien="alien://${file}"
-    alien_cp -f ${path_alien} ${target_file} >> $logfile 2>&1 &
+    alien_cp -f ${path_alien} file:${target_file} >> $logfile 2>&1 &
     sleep $delay
 done
 
@@ -77,8 +71,8 @@ nsuccess=0
 done=0
 pause=2
 while [ $done -lt $nfiles ]; do
-    nsuccess=$(cat $logfile | grep -e "MESSAGE: \[SUCCESS\]" -e "TARGET VALID" | wc -l)
-    nerror=$(cat $logfile | grep "MESSAGE: \[ERROR\]" | wc -l)
+    nsuccess=$(cat $logfile | grep -e "STATUS OK" -e "TARGET VALID" | wc -l)
+    nerror=$(cat $logfile | grep -i "STATUS ERROR" | wc -l)
     done=$((nsuccess + nerror))
     echo -e "Completed: $nsuccess/$nfiles\tFailed: $nerror/$nfiles\tDone: $done/$nfiles"
     if [ $done -lt $nfiles ]; then

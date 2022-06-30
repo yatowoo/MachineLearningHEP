@@ -22,6 +22,7 @@ from array import array
 import numpy as np
 import pandas as pd
 import yaml
+import logging
 # pylint: disable=import-error, no-name-in-module
 import uproot
 from root_numpy import fill_hist
@@ -61,7 +62,10 @@ class AnalyzerJet(Analyzer):
     species = "analyzer"
     def __init__(self, datap, case, typean, period):
         super().__init__(datap, case, typean, period)
-
+        # Logging
+        self.info_level = datap['analysis'][self.typean].get('info_level','info')
+        if self.info_level == 'debug':
+            self.logger.setLevel(logging.DEBUG)
         # machine learning
         self.lpt_probcutfin = datap["mlapplication"]["probcutoptimal"]
 
@@ -3494,7 +3498,9 @@ class AnalyzerJet(Analyzer):
                 input_files_sysvar_eff.append(TFile.Open(eff_file))
                 signif_file = path_hm.replace(string_default, self.systematic_catnames[sys_cat] + "/" + varname)
                 input_files_sysvarsignif.append(TFile.Open(signif_file))
-
+                # Debug
+                self.logger.debug(f'>>> Reading {sys_var} - {varname}')
+                self.logger.debug(f'  Path={path}, Eff={eff_file}, Signal={signif_file}')
                 if not input_files_sysvar[sys_var]:
                     self.logger.fatal(make_message_notfound(path))
                 if not input_files_sysvar_eff[sys_var]:
@@ -3521,6 +3527,9 @@ class AnalyzerJet(Analyzer):
                 for sys_var in range(self.systematic_variations[sys_cat]):
                     signif_check = True
                     string_catvar = self.systematic_catnames[sys_cat] + "/" + self.systematic_varnames[sys_cat][sys_var]
+                    # Debug
+                    self.logger.debug(f'>>> Processing {sys_var} - {varname}')
+                    self.logger.debug(f'  Path={input_files_sys[sys_cat][sys_var].GetName()}, Eff={input_files_eff[sys_cat][sys_var]}, Signal={input_files_signif[sys_cat][sys_var].GetName()}')
                     for ipt in range(self.p_nptfinbins):
                         suffix_plot = "%s_%g_%g_%s_%g_%g" % \
                             (self.v_var2_binning, self.lvar2_binmin_reco[ibin2], self.lvar2_binmax_reco[ibin2],
@@ -4568,6 +4577,8 @@ class AnalyzerJet(Analyzer):
                 fonll_pred = file_fonll.Get("hD0KpifromBpred_central_corr")
             elif "Lc" in self.case:
                 fonll_pred = file_fonll.Get("hLcK0sppfromBpred_central_corr")
+            elif "Ds" in self.case:
+                fonll_pred = file_fonll.Get("hDsPhipitoKkpifromBpred_central_corr")
             fonll_hist = fonll_pred.Clone("fonll_hist")
             x_max = fonll_hist.GetXaxis().GetXmax()
             x_min = fonll_hist.GetXaxis().GetXmin()

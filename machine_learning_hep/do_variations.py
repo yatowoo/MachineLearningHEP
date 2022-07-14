@@ -285,7 +285,7 @@ def healthy_structure(dic_diff: dict): # pylint: disable=too-many-return-stateme
                 return False
     return True
 
-def main(yaml_in, yaml_diff, analysis, clean, proc): # pylint: disable=too-many-locals, too-many-statements, too-many-branches
+def main(yaml_in, yaml_diff, analysis, clean, proc, do_fast): # pylint: disable=too-many-locals, too-many-statements, too-many-branches
     '''Main function'''
     with open(yaml_in, 'r') as file_in:
         dic_in = yaml.safe_load(file_in)
@@ -378,9 +378,9 @@ def main(yaml_in, yaml_diff, analysis, clean, proc): # pylint: disable=too-many-
 
                 # Start the analysis.
                 if analysis:
-                    if do_processor and not delete_output_dirs(dic_new, analysis, varstring):
+                    if do_processor and not do_fast and not delete_output_dirs(dic_new, analysis, varstring):
                         sys.exit(1)
-                    mode = "complete" if do_processor else "analyzer"
+                    mode = "complete" if (do_processor and not do_fast) else "analyzer"
                     config = "submission/default_%s.yml" % mode
                     print("Starting the analysis \x1b[1;32m%s\x1b[0m for the variation " \
                         "\x1b[1;32m%s: %s\x1b[0m" % \
@@ -416,5 +416,6 @@ if __name__ == '__main__':
         help="Delete the created database files at the end.")
     PARSER.add_argument("-p", type=int, choices=[1, 0], dest="proc", help="If 1/0, process only " \
         "categories that do/don't require running the processor.")
+    PARSER.add_argument("--fast", default=False, help="Read existed files from corresponding processer", action='store_true')
     ARGS = PARSER.parse_args()
-    main(ARGS.input, ARGS.diff, ARGS.analysis, ARGS.clean, ARGS.proc)
+    main(ARGS.input, ARGS.diff, ARGS.analysis, ARGS.clean, ARGS.proc, ARGS.fast)

@@ -160,6 +160,7 @@ class AnalyzerJet(Analyzer):
             self.p_fix_meansec = datap["analysis"][self.typean].get("fix_meansec", [False] * self.p_nptfinbins)
             self.p_fix_sigmasec = datap["analysis"][self.typean].get("fix_sigmasec",[False] * self.p_nptfinbins)
             self.p_sigmaarraysec = datap["analysis"][self.typean].get("sigmaarraysec", [0.0] * self.p_nptfinbins)
+            self.width_ratio_DplusDs = datap["analysis"][self.typean].get("width_ratio_DplusDs", None)
         self.use_reflections = datap["analysis"][self.typean].get("use_reflections", False)
         # efficiency calculation
         #self.doeff_resp = datap["analysis"][self.typean].get("doeff_resp", False)
@@ -179,7 +180,8 @@ class AnalyzerJet(Analyzer):
             datap["analysis"][self.typean].get("sigma_scale", None)
         self.sidebandleftonly = \
             datap["analysis"][self.typean].get("sidebandleftonly", None)
-
+        self.sidebandrightonly = \
+            datap["analysis"][self.typean].get("sidebandrightonly", False)
         # feed-down
         self.powheg_path_nonprompt = \
             datap["analysis"][self.typean].get("powheg_path_nonprompt", None)
@@ -461,6 +463,8 @@ class AnalyzerJet(Analyzer):
                     print("Set Fix Gaussian Sigma:", sigma_initial)
                     fitter.SetFixGaussianSigma(sigma_initial)
                 if self.p_sgnfunc[ipt] == 1:
+                    if self.width_ratio_DplusDs:
+                        self.p_sigmaarraysec[ipt] = sigma_initial * self.width_ratio_DplusDs
                     fitter.IncludeSecondGausPeak(
                         self.p_masspeaksec,
                         self.p_fix_meansec[ipt],
@@ -1114,7 +1118,13 @@ class AnalyzerJet(Analyzer):
                 fun_bkg = mass_fitter.GetBackgroundRecalcFunc()
                 fun_ref = mass_fitter.GetReflFunc() if self.use_reflections else None
                 fun_sig = mass_fitter.GetSignalFunc()
+                func_mass = mass_fitter.GetMassFunc()
 
+                # Fitting status
+                if not fun_bkg: # if there is no background fit it continues
+                    self.logger.debug(f'FAIL bkg. func. not found in  {suffix}')
+                    continue
+                    
                 # Here I define the boundaries for the sideband subtractions
                 # based on the results of the fit. We get usually 4-9 sigma from
                 # the mean in both sides to extract the sideband distributions
@@ -1128,6 +1138,18 @@ class AnalyzerJet(Analyzer):
                 masshigh2sig = mean + self.signal_sigma*sigma
                 binmasshigh2sig = \
                     hzvsmass.GetXaxis().FindBin(masshigh2sig)
+                # Siginificance test
+                bin_width = self.p_rebin[ibin2][ipt] * hzvsmass.GetXaxis().GetBinWidth(1)
+                nbkg = fun_bkg.Integral(masslow2sig, masshigh2sig) / bin_width
+                nsignal = func_mass.Integral(masslow2sig, masshigh2sig) / bin_width - nbkg
+                if nsignal + nbkg < 1.:
+                    self.logger.debug(f'FAIL to extract signal with S, B = {nsignal:.1f}, {nbkg:.1f} - {suffix}')
+                    continue
+                s_to_b = nsignal/sqrt(nsignal+nbkg)
+                if s_to_b < 2.0:
+                    self.logger.debug(f'FAIL to extract signal with S/#sqrt(S+B) = {s_to_b:.1f} (S, B = {nsignal:.1f}, {nbkg:.1f}) - {suffix}')
+                    continue
+
                 # bkg_left_1
                 masslow9sig = \
                     mean - self.sideband_sigma_2_left * sigma
@@ -1135,7 +1157,7 @@ class AnalyzerJet(Analyzer):
                 masslow4sig = \
                     mean - self.sideband_sigma_1_left * sigma
                 # Exclude signal region of second Gaus/peak
-                if(self.p_sgnfunc[ipt] == 1 and mass_fitter.MassFitter(0) == 1):
+                if(self.p_sgnfunc[ipt] == 1):
                     mean_sec = mass_fitter.GetSecondPeakFunc().GetParameter(1)
                     sigma_sec = mass_fitter.GetSecondPeakFunc().GetParameter(2)
                     n_sigma_sideband = self.sideband_sigma_2_left - self.sideband_sigma_1_left
@@ -1173,7 +1195,7 @@ class AnalyzerJet(Analyzer):
                              binmasshigh4sig, binmasshigh9sig, "e")
 
                 # the background histogram is made by adding the left and
-                # right sideband in general. self.sidebandleftonly = True is
+                # right sideband in general. self.sidebandleftonly/sidebandrightonly = True is
                 # just made for systematic studies
 
                 # Below a list of histograms are defined:
@@ -1185,16 +1207,17 @@ class AnalyzerJet(Analyzer):
                 #      subtraction not corrected for efficiency
                 #    - hzbkg_scaled is the bkg distribution scaled for the
                 #      factor used to perform the background subtraction
-
                 hzbkg = hzbkgleft.Clone("hzbkg" + suffix)
+                hzbkg.Reset("") # Initialize
+                if not self.sidebandrightonly:
+                    hzbkg.Add(hzbkgleft)
                 if not self.sidebandleftonly:
                     hzbkg.Add(hzbkgright)
                 hzbkg_scaled = hzbkg.Clone("hzbkg_scaled" + suffix)
 
-                area_scale_denominator = -1
-                if not fun_bkg: # if there is no background fit it continues
-                    continue
-                area_scale_denominator = fun_bkg.Integral(masslow9sig, masslow4sig)
+                area_scale_denominator = 0.
+                if not self.sidebandrightonly:
+                    area_scale_denominator += fun_bkg.Integral(masslow9sig, masslow4sig)
                 if not self.sidebandleftonly:
                     area_scale_denominator += fun_bkg.Integral(masshigh4sig, masshigh9sig)
                 if area_scale_denominator == 0:
@@ -1218,9 +1241,11 @@ class AnalyzerJet(Analyzer):
                 # correct for reflections
 
                 if self.use_reflections:
-                    ref_in_bkg = fun_ref.Integral(masslow9sig, masslow4sig)
                     ref_in_sig = fun_ref.Integral(masslow2sig, masshigh2sig)
                     sig_in_sig = fun_sig.Integral(masslow2sig, masshigh2sig)
+                    ref_in_bkg = 0.
+                    if not self.sidebandrightonly:
+                        ref_in_bkg += fun_ref.Integral(masslow9sig, masslow4sig)
                     if not self.sidebandleftonly:
                         ref_in_bkg += fun_ref.Integral(masshigh4sig, masshigh9sig)
                     correction = (ref_in_sig - ref_in_bkg * area_scale) / sig_in_sig
